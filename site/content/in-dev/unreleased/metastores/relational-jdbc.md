@@ -68,7 +68,54 @@ quarkus.rds.credentials-provider.aws.port=6160
 
 This is the basic configuration. For more details, please refer to the [Quarkus plugin documentation](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-rds.html#_configuration_reference).
 
-The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgresSQL and H2 databases. At this time, official documentation is provided exclusively for usage with PostgreSQL.
+## 3. MySQL (driver not bundled)
+
+The Relational JDBC backend supports MySQL 8.0+ through the `polaris-server-mysql` runtime module. Because the MySQL JDBC driver is GPL-licensed, it cannot be distributed with Apache Polaris (see [issue #2491](https://github.com/apache/polaris/issues/2491)); you must build a runner that includes the driver yourself:
+
+```bash
+./gradlew :polaris-server-mysql:build -PincludeMysqlDriver=true
+```
+
+Once the runner is built, configure it the same way as the PostgreSQL case, pointing to a MySQL server:
+
+```properties
+polaris.persistence.type=relational-jdbc
+polaris.persistence.relational.jdbc.database-type=mysql
+quarkus.datasource.jdbc.url=jdbc:mysql://<host>:3306/POLARIS_SCHEMA
+quarkus.datasource.username=<your-username>
+quarkus.datasource.password=<your-password>
+```
+
+### MySQL server requirements
+
+The MySQL server must be started with `lower_case_table_names=1`.
+Polaris generates SQL that mixes UPPERCASE table identifiers (e.g. `POLICY_MAPPING_RECORD`) and lowercase ones (e.g. `idempotency_records`), and Linux MySQL is case-sensitive by default.
+This setting must be set on first initialization (when the data directory is empty); it cannot be changed later.
+
+### Bootstrapping the MySQL backend
+
+The Polaris admin tool does not currently bundle the MySQL JDBC driver, so the [Admin Tool]({{% ref "../admin-tool" %}}) `bootstrap` flow described below does not apply to MySQL.
+For the MySQL variant, configure the Polaris server to bootstrap itself on first startup by setting:
+
+```properties
+polaris.persistence.auto-bootstrap-types=in-memory,relational-jdbc
+polaris.realm-context.realms=<your-realm>
+```
+
+```bash
+POLARIS_BOOTSTRAP_CREDENTIALS=<realm>,<client-id>,<client-secret>
+```
+
+The server will execute `mysql/schema-v4.sql` and create the root principal automatically.
+Run a single replica for the initial bootstrap to avoid races; the bootstrap log line confirms completion.
+**Auto-bootstrap on persistent backends is not yet idempotent** ([apache/polaris#2324](https://github.com/apache/polaris/issues/2324)) — re-running the server with these settings against an already-bootstrapped database fails on startup with "metastore manager has already been bootstrapped".
+Treat the auto-bootstrap startup as a one-time operation until #2324 is resolved.
+
+See [`runtime/server-mysql/README.md`](https://github.com/apache/polaris/tree/main/runtime/server-mysql) for the full rationale and build options.
+
+---
+
+The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports PostgreSQL, H2, and MySQL databases. At this time, the most detailed documentation is provided for PostgreSQL.
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource).
 

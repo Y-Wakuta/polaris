@@ -61,6 +61,14 @@ public class DatasourceOperations {
   private static final String H2_SCHEMA_DOES_NOT_EXIST = "90079";
   private static final String H2_TABLE_DOES_NOT_EXIST = "42S02";
 
+  // MYSQL STATUS CODES
+  // SQLSTATE 23000 = integrity constraint violation (duplicate key / FK / NOT NULL / CHECK).
+  // Pair with vendor error 1062 (duplicate entry) to narrow down to duplicate-key only.
+  private static final String MYSQL_CONSTRAINT_VIOLATION = "23000";
+  private static final int MYSQL_DUPLICATE_ENTRY_CODE = 1062;
+  // SQLSTATE 42S02 = base table or view not found (shared with H2).
+  private static final String MYSQL_TABLE_DOES_NOT_EXIST = "42S02";
+
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
 
@@ -408,7 +416,17 @@ public class DatasourceOperations {
   }
 
   public boolean isConstraintViolation(SQLException e) {
-    return CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
+    // PostgreSQL / CockroachDB: SQLSTATE 23505 is specifically unique_violation.
+    if (CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState())) {
+      return true;
+    }
+    // MySQL: combine SQLSTATE 23000 with vendor error 1062 to match PG's 23505 precision.
+    if (databaseType == DatabaseType.MYSQL
+        && MYSQL_CONSTRAINT_VIOLATION.equals(e.getSQLState())
+        && e.getErrorCode() == MYSQL_DUPLICATE_ENTRY_CODE) {
+      return true;
+    }
+    return false;
   }
 
   public boolean isRelationDoesNotExist(SQLException e) {
@@ -416,7 +434,9 @@ public class DatasourceOperations {
             && (databaseType == DatabaseType.POSTGRES || databaseType == DatabaseType.COCKROACHDB))
         || ((H2_SCHEMA_DOES_NOT_EXIST.equals(e.getSQLState())
                 || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState()))
-            && databaseType == DatabaseType.H2);
+            && databaseType == DatabaseType.H2)
+        || (MYSQL_TABLE_DOES_NOT_EXIST.equals(e.getSQLState())
+            && databaseType == DatabaseType.MYSQL);
   }
 
   private Connection borrowConnection() throws SQLException {

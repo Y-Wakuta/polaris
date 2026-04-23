@@ -34,7 +34,8 @@ import java.util.Locale;
 public enum DatabaseType {
   POSTGRES("postgres"),
   COCKROACHDB("cockroachdb"),
-  H2("h2");
+  H2("h2"),
+  MYSQL("mysql");
 
   private final String displayName; // Store the user-friendly name
 
@@ -56,6 +57,7 @@ public enum DatabaseType {
       case POSTGRES -> 4; // PostgreSQL has schemas v1, v2, v3, v4
       case COCKROACHDB -> 4; // CockroachDB schema version kept in sync with PostgreSQL
       case H2 -> 4; // H2 uses same schemas as PostgreSQL
+      case MYSQL -> 4; // MySQL has schema v4 only
     };
   }
 
@@ -64,6 +66,7 @@ public enum DatabaseType {
       case "h2" -> DatabaseType.H2;
       case "postgresql" -> DatabaseType.POSTGRES;
       case "cockroachdb" -> DatabaseType.COCKROACHDB;
+      case "mysql" -> DatabaseType.MYSQL;
       default -> throw new IllegalStateException("Unsupported DatabaseType: '" + displayName + "'");
     };
   }
@@ -100,6 +103,8 @@ public enum DatabaseType {
         inferredType = DatabaseType.POSTGRES;
       } else if (productName.contains("h2")) {
         inferredType = DatabaseType.H2;
+      } else if (productName.contains("mysql")) {
+        inferredType = DatabaseType.MYSQL;
       }
 
       // If a type was explicitly configured, use it and validate
