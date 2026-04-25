@@ -1107,10 +1107,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public void deleteFromPolicyMappingRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
-    if (datasourceOperations.getDatabaseType() == DatabaseType.MYSQL) {
-      deleteFromPolicyMappingRecordsMySql(record);
-      return;
-    }
     var modelPolicyMappingRecord = ModelPolicyMappingRecord.fromPolicyMappingRecord(record);
     try {
       Map<String, Object> objectMap =
@@ -1121,26 +1117,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               ModelPolicyMappingRecord.ALL_COLUMNS,
               ModelPolicyMappingRecord.TABLE_NAME,
               objectMap));
-    } catch (SQLException e) {
-      throw new RuntimeException(
-          String.format("Failed to write to policy records due to %s", e.getMessage()), e);
-    }
-  }
-
-  /**
-   * MySQL-specific variant of {@link #deleteFromPolicyMappingRecords} that restricts the WHERE
-   * clause to the primary-key columns. Comparing the JSON {@code parameters} column against a
-   * String parameter is subject to MySQL's JSON canonicalization, which can produce false-negatives
-   * and leave the row in place. The PK uniquely identifies the row, so an equality match on the PK
-   * is sufficient and unambiguous.
-   */
-  private void deleteFromPolicyMappingRecordsMySql(@Nonnull PolarisPolicyMappingRecord record) {
-    try {
-      datasourceOperations.executeUpdate(
-          QueryGenerator.generateDeleteQuery(
-              ModelPolicyMappingRecord.ALL_COLUMNS,
-              ModelPolicyMappingRecord.TABLE_NAME,
-              ModelPolicyMappingRecord.toPrimaryKeyMap(record, realmId)));
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to policy records due to %s", e.getMessage()), e);

@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 
@@ -335,7 +336,11 @@ public class QueryGenerator {
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
     for (Map.Entry<String, Object> entry : whereEquals.entrySet()) {
-      conditions.add(entry.getKey() + " = ?");
+      if (entry.getValue() instanceof Converter.MysqlJsonValue) {
+        conditions.add(entry.getKey() + " = CAST(? AS JSON)");
+      } else {
+        conditions.add(entry.getKey() + " = ?");
+      }
       parameters.add(entry.getValue());
     }
     for (Map.Entry<String, Object> entry : whereGreater.entrySet()) {

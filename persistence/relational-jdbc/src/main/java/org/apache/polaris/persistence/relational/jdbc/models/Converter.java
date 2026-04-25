@@ -50,4 +50,15 @@ public interface Converter<T> {
       throw new RuntimeException(e);
     }
   }
+
+  default Object wrapJsonForDatabase(String json, DatabaseType databaseType) {
+    return switch (databaseType) {
+      case POSTGRES -> toJsonbPGobject(json);
+      case MYSQL -> new MysqlJsonValue(json);
+      default -> json;
+    };
+  }
+
+  /** Marker for a JSON column value bound to a JDBC parameter on MySQL. */
+  record MysqlJsonValue(String json) {}
 }

@@ -101,7 +101,6 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
     policy_catalog_id BIGINT NOT NULL,
     policy_id BIGINT NOT NULL,
     parameters JSON NOT NULL DEFAULT ('{}'),
-    -- PK columns must stay in sync with ModelPolicyMappingRecord.toPrimaryKeyMap().
     PRIMARY KEY (realm_id, target_catalog_id, target_id, policy_type_code, policy_catalog_id, policy_id),
     INDEX idx_policy_mapping_record (realm_id, policy_type_code, policy_catalog_id, policy_id, target_catalog_id, target_id)
 );

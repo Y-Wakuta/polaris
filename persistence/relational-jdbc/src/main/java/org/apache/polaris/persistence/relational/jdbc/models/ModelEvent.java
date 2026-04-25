@@ -130,11 +130,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
     map.put(PRINCIPAL_NAME, getPrincipalName());
     map.put(RESOURCE_TYPE, getResourceType().toString());
     map.put(RESOURCE_IDENTIFIER, getResourceIdentifier());
-    if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put(ADDITIONAL_PROPERTIES, toJsonbPGobject(getAdditionalProperties()));
-    } else {
-      map.put(ADDITIONAL_PROPERTIES, getAdditionalProperties());
-    }
+    map.put(ADDITIONAL_PROPERTIES, wrapJsonForDatabase(getAdditionalProperties(), databaseType));
     return map;
   }
 

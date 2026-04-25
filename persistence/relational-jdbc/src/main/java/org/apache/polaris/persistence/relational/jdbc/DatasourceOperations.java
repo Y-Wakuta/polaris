@@ -184,7 +184,7 @@ public class DatasourceOperations {
               PreparedStatement statement = connection.prepareStatement(query.sql())) {
             List<Object> params = query.parameters();
             for (int i = 0; i < params.size(); i++) {
-              statement.setObject(i + 1, params.get(i));
+              bindParam(statement, i + 1, params.get(i));
             }
             try (ResultSet resultSet = statement.executeQuery()) {
               ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
@@ -210,7 +210,7 @@ public class DatasourceOperations {
               PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
             List<Object> params = preparedQuery.parameters();
             for (int i = 0; i < params.size(); i++) {
-              statement.setObject(i + 1, params.get(i));
+              bindParam(statement, i + 1, params.get(i));
             }
             boolean autoCommit = connection.getAutoCommit();
             connection.setAutoCommit(true);
@@ -250,7 +250,7 @@ public class DatasourceOperations {
               for (int i = 1; i <= preparedQueries.parametersList().size(); i++) {
                 List<Object> params = preparedQueries.parametersList().get(i - 1);
                 for (int j = 0; j < params.size(); j++) {
-                  statement.setObject(j + 1, params.get(j));
+                  bindParam(statement, j + 1, params.get(j));
                 }
 
                 statement.addBatch(); // Add to batch
@@ -317,9 +317,18 @@ public class DatasourceOperations {
     try (PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
       List<Object> params = preparedQuery.parameters();
       for (int i = 0; i < params.size(); i++) {
-        statement.setObject(i + 1, params.get(i));
+        bindParam(statement, i + 1, params.get(i));
       }
       return statement.executeUpdate();
+    }
+  }
+
+  /** Binds a JDBC parameter, unwrapping {@link Converter.MysqlJsonValue} for MySQL. */
+  private void bindParam(PreparedStatement statement, int index, Object value) throws SQLException {
+    if (databaseType == DatabaseType.MYSQL && value instanceof Converter.MysqlJsonValue jv) {
+      statement.setObject(index, jv.json());
+    } else {
+      statement.setObject(index, value);
     }
   }
 

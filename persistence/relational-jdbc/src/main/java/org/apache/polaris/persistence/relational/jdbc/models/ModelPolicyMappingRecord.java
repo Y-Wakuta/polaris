@@ -175,28 +175,7 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
     map.put("policy_type_code", policyTypeCode);
     map.put("policy_catalog_id", policyCatalogId);
     map.put("policy_id", policyId);
-    if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put("parameters", toJsonbPGobject(this.getParameters()));
-    } else {
-      map.put("parameters", this.getParameters());
-    }
-    return map;
-  }
-
-  /**
-   * Builds a column-to-value map containing exactly the primary-key columns of the
-   * policy_mapping_record table. Keep this in sync with the {@code PRIMARY KEY (...)} clause of
-   * each schema-vN.sql file.
-   */
-  public static Map<String, Object> toPrimaryKeyMap(
-      PolarisPolicyMappingRecord record, String realmId) {
-    Map<String, Object> map = new LinkedHashMap<>();
-    map.put("target_catalog_id", record.getTargetCatalogId());
-    map.put("target_id", record.getTargetId());
-    map.put("policy_type_code", record.getPolicyTypeCode());
-    map.put("policy_catalog_id", record.getPolicyCatalogId());
-    map.put("policy_id", record.getPolicyId());
-    map.put("realm_id", realmId);
+    map.put("parameters", wrapJsonForDatabase(this.getParameters(), databaseType));
     return map;
   }
 }
