@@ -154,27 +154,12 @@ tasks.named<QuarkusRun>("quarkusRun") {
 
 val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 
-// Configuration to expose distribution artifacts
-val distributionElements by
-  configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-  }
-
-val licenseNoticeElements by
-  configurations.creating {
-    isCanBeConsumed = true
-    isCanBeResolved = false
-  }
-
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.
 artifacts {
   add(quarkusRunner.name, provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") }) {
     builtBy(quarkusBuild)
   }
-  add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
-  add("licenseNoticeElements", layout.projectDirectory.dir("distribution"))
 }
 
 tasks.withType(Test::class.java).configureEach {
