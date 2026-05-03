@@ -64,3 +64,65 @@ following command:
   -Dquarkus.container-image.group=apache \
   -Dquarkus.container-image.name=polaris-local
 ```
+
+## Building a MySQL-capable server (custom downstream build)
+
+> **Note**: The official Polaris release artifacts do not include the MySQL JDBC driver because the driver is GPL-licensed (ASF Category X). The instructions in this section produce a *custom downstream build* that bundles the driver from your own source tree; the resulting runner is not an official Apache Polaris artifact.
+
+### Build
+
+Add the MySQL JDBC driver to the runner with the `-PincludeMysqlDriver=true` Gradle property:
+
+```shell
+./gradlew :polaris-server:assemble -PincludeMysqlDriver=true
+```
+
+The Docker image can be built the same way with `-Dquarkus.container-image.build=true`. To avoid overwriting the GPL-free image, pass a distinct image name:
+
+```shell
+./gradlew \
+  :polaris-server:assemble \
+  :polaris-server:quarkusAppPartsBuild --rerun \
+  -PincludeMysqlDriver=true \
+  -Dquarkus.container-image.build=true \
+  -Dquarkus.container-image.name=polaris-mysql
+```
+
+When `-PincludeMysqlDriver=true` is set, the build script also disables the license-report tasks (the GPL driver is intentionally absent from `LICENSE`).
+
+### Runtime configuration
+
+MySQL is exposed as a Quarkus *named* datasource (`mysql`) that is declared inactive by default. To use the MySQL backend at runtime, set the following properties (or the equivalent environment variables, e.g. `QUARKUS_DATASOURCE_MYSQL_JDBC_URL`):
+
+```properties
+polaris.persistence.type=relational-jdbc
+polaris.persistence.relational.jdbc.database-type=mysql
+
+quarkus.datasource.mysql.active=true
+quarkus.datasource.mysql.jdbc.url=jdbc:mysql://<host>:3306/POLARIS_SCHEMA
+quarkus.datasource.mysql.username=<your-username>
+quarkus.datasource.mysql.password=<your-password>
+```
+
+PostgreSQL, CockroachDB and H2 continue to use the default (unnamed) datasource and require no changes to existing configuration.
+
+### MySQL server requirements
+
+The MySQL server must be started with `lower_case_table_names=1`. Polaris generates SQL that mixes UPPERCASE table identifiers (e.g. `POLICY_MAPPING_RECORD`) and lowercase ones (e.g. `idempotency_records`), and Linux MySQL is case-sensitive by default. This setting must be configured on first initialization (when the data directory is empty); it cannot be changed later.
+
+### Bootstrapping the MySQL backend
+
+The Polaris admin tool does not currently bundle the MySQL JDBC driver, so the standard admin-tool `bootstrap` flow does not apply. Instead, configure the Polaris server to bootstrap itself on first startup:
+
+```properties
+polaris.persistence.auto-bootstrap-types=in-memory,relational-jdbc
+polaris.realm-context.realms=<your-realm>
+```
+
+```shell
+POLARIS_BOOTSTRAP_CREDENTIALS=<realm>,<client-id>,<client-secret>
+```
+
+The server will execute `mysql/schema-v4.sql` and create the root principal automatically. Run a single replica for the initial bootstrap to avoid races; the bootstrap log line confirms completion.
+
+**Auto-bootstrap on persistent backends is not yet idempotent** ([apache/polaris#2324](https://github.com/apache/polaris/issues/2324)): re-running the server with these settings against an already-bootstrapped database fails on startup with `metastore manager has already been bootstrapped`. Treat the auto-bootstrap startup as a one-time operation until #2324 is resolved.

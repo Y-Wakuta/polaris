@@ -66,15 +66,17 @@ public class MysqlRelationalJdbcLifeCycleManagement
         "mysql",
         "polaris.persistence.relational.jdbc.max-retries",
         "2",
-        "quarkus.datasource.db-kind",
-        "mysql",
-        "quarkus.datasource.jdbc.url",
+        // The named MySQL datasource is declared as inactive in the bundled defaults; tests
+        // (and production users) opt in by setting `active=true` on the named datasource.
+        "quarkus.datasource.mysql.active",
+        "true",
+        "quarkus.datasource.mysql.jdbc.url",
         mysql.getJdbcUrl(),
-        "quarkus.datasource.username",
+        "quarkus.datasource.mysql.username",
         mysql.getUsername(),
-        "quarkus.datasource.password",
+        "quarkus.datasource.mysql.password",
         mysql.getPassword(),
-        "quarkus.datasource.jdbc.initial-size",
+        "quarkus.datasource.mysql.jdbc.initial-size",
         "10");
   }
 

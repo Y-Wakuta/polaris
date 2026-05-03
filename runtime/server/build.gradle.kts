@@ -53,6 +53,21 @@ dependencies {
   implementation("io.quarkus:quarkus-container-image-docker")
 }
 
+// MySQL is opt-in: the GPL JDBC driver (ASF Category X) is not bundled in the default
+// build. Enable with `-PincludeMysqlDriver=true`.
+if (project.hasProperty("includeMysqlDriver")) {
+  // Add the GPL MySQL JDBC driver to the runner classpath.
+  dependencies { runtimeOnly("io.quarkus:quarkus-jdbc-mysql") }
+  // Override the `jdbc=false` default in `application.properties` so Quarkus wires up
+  // the MySQL named datasource at build time.
+  quarkus { quarkusBuildProperties.put("quarkus.datasource.mysql.jdbc", "true") }
+  // The GPL driver is intentionally absent from LICENSE; skip the license-report tasks
+  // that would otherwise fail when the driver appears on the classpath.
+  listOf("generateLicenseReport", "checkLicense", "licenseReportZip").forEach { name ->
+    tasks.matching { it.name == name }.configureEach { enabled = false }
+  }
+}
+
 quarkus {
   quarkusBuildProperties.put("quarkus.package.jar.type", "fast-jar")
   // Pull manifest attributes from the "main" `jar` task to get the
